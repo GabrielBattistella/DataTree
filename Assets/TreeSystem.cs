@@ -119,7 +119,7 @@ public class TreeSystem : MonoBehaviour
 
         PowerSetFolders(tempfolders);
 
-        GetMissedFolders(tempfolders);
+        CreateRemainsfolder(tempfolders);
 
 
 
@@ -127,7 +127,7 @@ public class TreeSystem : MonoBehaviour
     }
 
 
-    void GetMissedFolders(List<Folder> folders)
+    void CreateRemainsfolder(List<Folder> folders)
     {
 
         List<Folder> tempList = new List<Folder>();
@@ -135,7 +135,7 @@ public class TreeSystem : MonoBehaviour
         {
             if (folders.Count <= 1)
             {
-                GetMissedFolders(subfolder.Folders);
+                CreateRemainsfolder(subfolder.Folders);
             }
             else
             {
