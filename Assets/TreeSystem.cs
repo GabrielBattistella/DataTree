@@ -8,9 +8,6 @@ using UnityEngine;
 public class TreeSystem : MonoBehaviour
 {
 
-    List<Folder> tempfolders = new List<Folder>();
-    private Dictionary<string, Folder> folderByPath = new Dictionary<string, Folder>();
-
     void Start()
     {
         var home = new List<string>()
@@ -26,19 +23,21 @@ public class TreeSystem : MonoBehaviour
                 "home/sports|music/misc|favorites",
             };
 
-        var folders3 = GetFoldersStrings(home);
-        var folders2 = GetFoldersStringsPowerSet(music);
-        ShowFolders(folders2);
+        var folders = GetFoldersStrings(home, false);
+        var folders1 = GetFoldersStrings(music, true);
+
+        Debug.Log("List without Power Set");
+        ShowFolders(folders);
         Debug.Log(" ");
-        ShowFolders(folders3);
+        Debug.Log("List with Power Set");
+        ShowFolders(folders1);
     }
 
 
-    #region single
-    static List<Folder> GetFoldersStrings(List<string> strings)
+    #region FolderSystem
+    List<Folder> GetFoldersStrings(List<string> strings, bool powerSet)
     {
         var folders = new List<Folder>();
-        //strings.Sort(StringComparer.InvariantCultureIgnoreCase);
         var folderByPath = new Dictionary<string, Folder>();
         foreach (var str in strings)
         {
@@ -58,12 +57,19 @@ public class TreeSystem : MonoBehaviour
                 }
             }
         }
+
+        if (powerSet)
+        {
+            PowerSetFolder(folders, folderByPath);
+            CreateRemainsfolder(folders);
+        }
+
         return folders;
     }
 
-    private static Folder CreateFolder(List<Folder> rootFolders, Dictionary<string, Folder> folderByPath, string folderPath)
+    private Folder CreateFolder(List<Folder> rootFolders, Dictionary<string, Folder> folderByPath, string folderPath)
     {
-        if (!folderByPath.TryGetValue(folderPath, out var folder))
+        if (!folderByPath.TryGetValue(folderPath, out Folder folder))
         {
 
             var folderPathWithoutEndSlash = folderPath.TrimEnd('/', '|');
@@ -83,7 +89,9 @@ public class TreeSystem : MonoBehaviour
             }
             folder = new Folder
             {
-                Name = folderName
+                Name = folderName,
+                PathString = folderPath
+
             };
             folders.Add(folder);
             folderByPath.Add(folderPath, folder);
@@ -91,42 +99,29 @@ public class TreeSystem : MonoBehaviour
         return folder;
     }
 
-    #endregion
-
-
-    #region PowerSet
-    List<Folder> GetFoldersStringsPowerSet(List<string> strings)
+    private static void ShowFolders(List<Folder> folders)
     {
-
-        foreach (var str in strings)
+        foreach (var folder in folders)
         {
-            string buildPath = null;
-            var splitedStrings = SplitString(str);
-            foreach (var splitStr in splitedStrings)
-            {
-                if (splitStr.EndsWith("/"))
-                {
-                    buildPath += splitStr;
-                    CreateFolderPowerSet(tempfolders, folderByPath, buildPath);
-                }
-                else
-                {
-                    var tempString = buildPath + splitStr;
-                    CreateFolderPowerSet(tempfolders, folderByPath, tempString);
-                }
-            }
+            ShowFolder(folder, 0);
         }
+    }
 
-        PowerSetFolders(tempfolders);
-
-        CreateRemainsfolder(tempfolders);
-
-
-
-        return tempfolders;
+    private static void ShowFolder(Folder folder, int indentation)
+    {
+        string folderIndentation = new string('-', indentation);
+        Debug.Log($"{folderIndentation}-{folder.Name}");
+        foreach (var subfolder in folder.Folders)
+        {
+            ShowFolder(subfolder, indentation + 1);
+        }
     }
 
 
+
+    #endregion
+
+    #region PowerSet
     void CreateRemainsfolder(List<Folder> folders)
     {
 
@@ -158,17 +153,11 @@ public class TreeSystem : MonoBehaviour
         }
     }
 
-
-    private void PowerSetFolders(List<Folder> folders)
-    {
-        PowerSetFolder(folders);
-    }
-
-    private void PowerSetFolder(List<Folder> folders)
+    private void PowerSetFolder(List<Folder> folders, Dictionary<string, Folder> folderByPath)
     {
         foreach (var subfolder in folders)
         {
-            PowerSetFolder(subfolder.Folders);
+            PowerSetFolder(subfolder.Folders, folderByPath);
             if (subfolder.Folders.Count > 1)
             {
                 List<string> stringPowersetList = new List<string>();
@@ -182,14 +171,13 @@ public class TreeSystem : MonoBehaviour
                 foreach (var item in GetPowerset(stringPowersetList))
                 {
                     var buildPath = subfolder.PathString + item;
-                    CreateFolderPowerSet(folders, folderByPath, buildPath);
+                    CreateFolder(folders, folderByPath, buildPath);
                 }
             }
         }
     }
 
-
-    static List<string> GetPowerset(List<string> list)
+    List<string> GetPowerset(List<string> list)
     {
         var templist = new List<string>();
         for (int i = 0; i < (1 << list.Count); i++)
@@ -226,60 +214,7 @@ public class TreeSystem : MonoBehaviour
         return templist;
 
     }
-
-    private static Folder CreateFolderPowerSet(List<Folder> rootFolders, Dictionary<string, Folder> folderByPath, string folderPath)
-    {
-        if (!folderByPath.TryGetValue(folderPath, out var folder))
-        {
-
-            var folderPathWithoutEndSlash = folderPath.TrimEnd('/', '|');
-            var lastSlashPosition = folderPathWithoutEndSlash.LastIndexOf("/");
-            List<Folder> folders;
-            string folderName;
-            if (lastSlashPosition < 0) // it's a first level folder
-            {
-                folderName = folderPathWithoutEndSlash;
-                folders = rootFolders;
-            }
-            else
-            {
-                var parentFolderPath = folderPath.Substring(0, lastSlashPosition + 1);
-                folders = folderByPath[parentFolderPath].Folders;
-                folderName = folderPathWithoutEndSlash.Substring(lastSlashPosition + 1);
-            }
-            folder = new Folder
-            {
-                Name = folderName,
-                PathString = folderPath
-            };
-            folders.Add(folder);
-            folderByPath.Add(folderPath, folder);
-        }
-        return folder;
-    }
-
     #endregion
-
-
-    #region utils
-    private static void ShowFolders(List<Folder> folders)
-    {
-        foreach (var folder in folders)
-        {
-            ShowFolder(folder, 0);
-        }
-    }
-
-    private static void ShowFolder(Folder folder, int indentation)
-    {
-        string folderIndentation = new string('-', indentation);
-        Debug.Log($"{folderIndentation}-{folder.Name}");
-        foreach (var subfolder in folder.Folders)
-        {
-            ShowFolder(subfolder, indentation + 1);
-        }
-    }
-
 
     private static string[] SplitString(string str)
     {
@@ -287,8 +222,6 @@ public class TreeSystem : MonoBehaviour
 
         return value;
     }
-
-    #endregion
 }
 
 
